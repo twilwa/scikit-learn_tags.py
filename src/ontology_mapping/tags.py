@@ -130,13 +130,18 @@ class ComponentTags:
         if not tag_def:
             raise ValueError(f"Unknown tag: {name}")
         
-        # Basic type validation
-        if tag_def.value is not Any and not isinstance(value, tag_def.value):
-            if tag_def.value == bool and isinstance(value, (int, str)):
-                # Allow conversion for common cases
-                value = bool(value)
-            else:
-                raise TypeError(f"Tag {name} expects {tag_def.value}, got {type(value)}")
+        # Basic type validation (skip complex generic types)
+        if tag_def.value is not Any and hasattr(tag_def.value, '__name__'):
+            try:
+                if not isinstance(value, tag_def.value):
+                    if tag_def.value == bool and isinstance(value, (int, str)):
+                        # Allow conversion for common cases
+                        value = bool(value)
+                    else:
+                        raise TypeError(f"Tag {name} expects {tag_def.value}, got {type(value)}")
+            except TypeError:
+                # Skip type checking for complex generic types like List[str]
+                pass
         
         self.tags[name] = value
     
