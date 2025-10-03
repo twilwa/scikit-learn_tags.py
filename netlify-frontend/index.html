@@ -120,6 +120,18 @@
                     <div id="viz-container"></div>
                 </div>
             </div>
+
+            <div class="pane pane-split pane-command hidden" id="pane-command">
+                <div class="pane-border-top">╭─ pane 4: command ────────────────────────────────────────────</div>
+                <div class="pane-content">
+                    <div class="command-prompt">
+                        <span class="prompt-symbol">$</span>
+                        <input type="text" id="command-input" class="command-input" placeholder="type 'help' or press Tab for commands..." />
+                    </div>
+                    <div id="command-output" class="command-output"></div>
+                    <div id="command-suggestions" class="command-suggestions hidden"></div>
+                </div>
+            </div>
         </div>
 
         <div class="tmux-status-bottom">
@@ -146,9 +158,9 @@
 
     <div class="footer-shortcuts">
         <span class="shortcut-hint">shortcuts:</span>
+        <span class="shortcut-item">ctrl+b t - command pane</span>
         <span class="shortcut-item">ctrl+b % - split pane</span>
         <span class="shortcut-item">ctrl+b " - split horizontal</span>
-        <span class="shortcut-item">ctrl+b c - new tab</span>
         <span class="shortcut-item">ctrl+enter - analyze</span>
     </div>
 

@@ -672,17 +672,34 @@ function startPolling(sessionUrl) {
     let checksRemaining = 60;
     let lastStatusTime = Date.now();
 
-    // Initial status
-    addLogLine('info', 'checking for analysis results...');
+    // Initial status with details
+    addLogLine('info', 'analysis modules queued:');
+    addLogLine('info', '  • log parser - extracting structured data');
+    addLogLine('info', '  • pattern detector - identifying workflow patterns');
+    addLogLine('info', '  • insight engine - generating recommendations');
+    addLogLine('info', '  • tool analyzer - mapping tool usage');
+    addLogLine('info', 'waiting for backend processor...');
+
+    const analysisSteps = [
+        'parsing log entries...',
+        'analyzing tool usage patterns...',
+        'detecting workflow sequences...',
+        'generating insights...',
+        'building dependency graphs...',
+        'finalizing analysis...'
+    ];
+    let stepIndex = 0;
 
     pollInterval = setInterval(async () => {
         checksRemaining--;
 
-        // Show progress every 10 checks (20 seconds)
+        // Show progress every 10 checks (20 seconds) with rotating analysis steps
         if (checksRemaining % 10 === 0 && checksRemaining < 60) {
             const elapsed = Math.floor((Date.now() - lastStatusTime) / 1000);
-            addLogLine('info', `still checking... (${elapsed}s elapsed)`);
-            updateProgress(30 + ((60 - checksRemaining) / 60) * 30, 'awaiting analysis...');
+            const currentStep = analysisSteps[stepIndex % analysisSteps.length];
+            addLogLine('info', `${currentStep} (${elapsed}s)`);
+            updateProgress(30 + ((60 - checksRemaining) / 60) * 30, currentStep);
+            stepIndex++;
         }
 
         if (checksRemaining <= 0) {
@@ -767,3 +784,225 @@ updateTime();
 setInterval(updateTime, 1000);
 initConfig();
 setMode('github');
+
+// Command pane system with tab completion
+const ANALYSIS_COMMANDS = {
+    'analyze-patterns': {
+        name: 'analyze-patterns',
+        desc: 'Detect workflow patterns and common sequences in your logs',
+        usage: 'analyze-patterns [session-id]'
+    },
+    'analyze-tools': {
+        name: 'analyze-tools',
+        desc: 'Analyze tool usage, frequency, and dependencies',
+        usage: 'analyze-tools [session-id]'
+    },
+    'generate-insights': {
+        name: 'generate-insights',
+        desc: 'Generate AI-powered insights and recommendations',
+        usage: 'generate-insights [session-id]'
+    },
+    'build-graph': {
+        name: 'build-graph',
+        desc: 'Build and visualize dependency graphs from log data',
+        usage: 'build-graph [session-id]'
+    },
+    'extract-features': {
+        name: 'extract-features',
+        desc: 'Extract structured features from unstructured logs',
+        usage: 'extract-features [session-id]'
+    },
+    'detect-errors': {
+        name: 'detect-errors',
+        desc: 'Identify error patterns and potential issues',
+        usage: 'detect-errors [session-id]'
+    },
+    'list-sessions': {
+        name: 'list-sessions',
+        desc: 'List all available analysis sessions',
+        usage: 'list-sessions'
+    },
+    'help': {
+        name: 'help',
+        desc: 'Show this help message with all available commands',
+        usage: 'help [command]'
+    },
+    'clear': {
+        name: 'clear',
+        desc: 'Clear the command output',
+        usage: 'clear'
+    }
+};
+
+const commandPane = document.getElementById('pane-command');
+const commandInput = document.getElementById('command-input');
+const commandOutput = document.getElementById('command-output');
+const commandSuggestions = document.getElementById('command-suggestions');
+
+function showCommandPane() {
+    if (commandPane) {
+        commandPane.classList.remove('hidden');
+        if (commandInput) {
+            commandInput.focus();
+        }
+    }
+}
+
+function hideCommandPane() {
+    if (commandPane) {
+        commandPane.classList.add('hidden');
+    }
+}
+
+function showSuggestions(matches) {
+    if (!commandSuggestions || matches.length === 0) return;
+
+    let html = '<div style="margin-bottom: 0.5rem; color: var(--tmux-active); font-weight: bold;">Available commands (press Tab to cycle):</div>';
+
+    matches.forEach(cmd => {
+        html += `<div class="suggestion-item">
+            <span class="suggestion-name">${cmd.name}</span>
+            <span class="suggestion-desc">${cmd.desc}</span>
+        </div>`;
+    });
+
+    commandSuggestions.innerHTML = html;
+    commandSuggestions.classList.remove('hidden');
+}
+
+function hideSuggestions() {
+    if (commandSuggestions) {
+        commandSuggestions.classList.add('hidden');
+    }
+}
+
+function addCommandOutput(text, type = 'info') {
+    if (!commandOutput) return;
+
+    const line = document.createElement('div');
+    line.style.color = type === 'error' ? 'var(--tmux-error)' :
+                       type === 'success' ? 'var(--tmux-active)' :
+                       type === 'warning' ? 'var(--tmux-warning)' :
+                       'var(--tmux-fg)';
+    line.textContent = text;
+    commandOutput.appendChild(line);
+    commandOutput.scrollTop = commandOutput.scrollHeight;
+}
+
+function executeCommand(commandLine) {
+    const parts = commandLine.trim().split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1);
+
+    addCommandOutput(`$ ${commandLine}`, 'info');
+
+    if (!cmd) {
+        return;
+    }
+
+    if (cmd === 'help') {
+        if (args.length > 0) {
+            const targetCmd = ANALYSIS_COMMANDS[args[0]];
+            if (targetCmd) {
+                addCommandOutput('');
+                addCommandOutput(`Command: ${targetCmd.name}`, 'success');
+                addCommandOutput(`Description: ${targetCmd.desc}`);
+                addCommandOutput(`Usage: ${targetCmd.usage}`);
+                addCommandOutput('');
+            } else {
+                addCommandOutput(`Unknown command: ${args[0]}`, 'error');
+            }
+        } else {
+            addCommandOutput('');
+            addCommandOutput('Available analysis commands:', 'success');
+            addCommandOutput('');
+            Object.values(ANALYSIS_COMMANDS).forEach(cmd => {
+                addCommandOutput(`  ${cmd.name.padEnd(20)} - ${cmd.desc}`);
+            });
+            addCommandOutput('');
+            addCommandOutput('Use "help [command]" for detailed usage', 'warning');
+            addCommandOutput('Press Tab for autocomplete suggestions', 'warning');
+        }
+    } else if (cmd === 'clear') {
+        commandOutput.innerHTML = '';
+    } else if (ANALYSIS_COMMANDS[cmd]) {
+        addCommandOutput('');
+        addCommandOutput(`Running ${cmd}...`, 'warning');
+        addCommandOutput('Note: Analysis backend not yet deployed', 'warning');
+        addCommandOutput('This command will work once backend is running', 'info');
+        addCommandOutput('');
+    } else {
+        addCommandOutput(`Unknown command: ${cmd}`, 'error');
+        addCommandOutput('Type "help" to see available commands', 'info');
+    }
+}
+
+if (commandInput) {
+    let tabIndex = 0;
+    let lastMatches = [];
+
+    commandInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+
+            const input = commandInput.value.trim();
+
+            if (!input) {
+                lastMatches = Object.values(ANALYSIS_COMMANDS);
+                showSuggestions(lastMatches);
+                tabIndex = 0;
+            } else {
+                const matches = Object.values(ANALYSIS_COMMANDS)
+                    .filter(cmd => cmd.name.startsWith(input));
+
+                if (matches.length > 0) {
+                    lastMatches = matches;
+                    showSuggestions(matches);
+                    commandInput.value = matches[tabIndex % matches.length].name;
+                    tabIndex++;
+                } else {
+                    hideSuggestions();
+                }
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            executeCommand(commandInput.value);
+            commandInput.value = '';
+            hideSuggestions();
+            tabIndex = 0;
+            lastMatches = [];
+        } else if (e.key === 'Escape') {
+            hideSuggestions();
+            tabIndex = 0;
+            lastMatches = [];
+        } else {
+            tabIndex = 0;
+            hideSuggestions();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (commandPane && !commandPane.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
+}
+
+let ctrlBPressed = false;
+let lastCtrlBTime = 0;
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'b') {
+        e.preventDefault();
+        ctrlBPressed = true;
+        lastCtrlBTime = Date.now();
+        setTimeout(() => {
+            if (Date.now() - lastCtrlBTime >= 1000) {
+                ctrlBPressed = false;
+            }
+        }, 1000);
+    } else if (ctrlBPressed && e.key === 't') {
+        e.preventDefault();
+        showCommandPane();
+        ctrlBPressed = false;
+    }
+});

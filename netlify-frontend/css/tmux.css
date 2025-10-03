@@ -480,3 +480,78 @@ body {
     content: ']';
     color: var(--tmux-dim);
 }
+
+.command-prompt {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.prompt-symbol {
+    color: var(--tmux-active);
+    font-weight: bold;
+}
+
+.command-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--tmux-border);
+    color: var(--tmux-fg);
+    padding: 0.5rem;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    outline: none;
+}
+
+.command-input:focus {
+    border-color: var(--tmux-active);
+}
+
+.command-output {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--tmux-fg);
+    white-space: pre-wrap;
+    margin-bottom: 1rem;
+}
+
+.command-suggestions {
+    position: absolute;
+    background: var(--tmux-bg);
+    border: 1px solid var(--tmux-active);
+    border-radius: 4px;
+    padding: 1rem;
+    max-width: 600px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 255, 135, 0.2);
+}
+
+.command-suggestions.hidden {
+    display: none;
+}
+
+.suggestion-item {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid var(--tmux-accent);
+    padding-left: 1rem;
+}
+
+.suggestion-item:last-child {
+    margin-bottom: 0;
+}
+
+.suggestion-name {
+    color: var(--tmux-active);
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.suggestion-desc {
+    color: var(--tmux-dim);
+    font-size: 11px;
+    display: block;
+}
