@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>claude code log analyzer</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="/static/css/terminal.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <pre class="logo">
+ ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗    ██╗      ██████╗  ██████╗ 
+██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝    ██║     ██╔═══██╗██╔════╝ 
+██║     ██║     ███████║██║   ██║██║  ██║█████╗      ██║     ██║   ██║██║  ███╗
+██║     ██║     ██╔══██║██║   ██║██║  ██║██╔══╝      ██║     ██║   ██║██║   ██║
+╚██████╗███████╗██║  ██║╚██████╔╝██████╔╝███████╗    ███████╗╚██████╔╝╚██████╔╝
+ ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚══════╝ ╚═════╝  ╚═════╝ 
+                         ╷                          
+             ╭───────────┤  analyzer v0.1        
+             │           ╵                        
+            </pre>
+            <p class="subtitle">hey. u stuck? lemme take a look.</p>
+        </header>
+
+        <main id="main-content">
+            <section id="upload-section">
+                <div class="terminal-box">
+                    <div class="box-header">╭─ drop your logs</div>
+                    <div class="box-content">
+                        <div id="drop-zone" class="drop-zone">
+                            <p>> drag .codex or .claude file here</p>
+                            <p>> or paste log content below</p>
+                            <form id="upload-form">
+                                <textarea 
+                                    id="log-content" 
+                                    placeholder="paste log content here..."
+                                    rows="8"
+                                ></textarea>
+                                <div class="form-controls">
+                                    <label class="checkbox">
+                                        <input type="checkbox" id="encrypt-toggle">
+                                        <span>encrypt? (run in TEE)</span>
+                                    </label>
+                                    <button type="submit" class="btn-primary">analyze →</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="box-footer">╰─</div>
+                </div>
+            </section>
+
+            <section id="analysis-section" style="display: none;">
+                <div class="terminal-box">
+                    <div class="box-header">╭─ analysis in progress</div>
+                    <div class="box-content">
+                        <div id="progress-container">
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill"></div>
+                            </div>
+                            <p id="status-message">> parsing logs...</p>
+                        </div>
+                    </div>
+                    <div class="box-footer">╰─</div>
+                </div>
+
+                <div id="insights-container" class="insights-container"></div>
+
+                <div id="visualizations-container" class="viz-container"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>btw, i can open these in a TEE if you want. it's wandb inference for now, so only you two'll have it.</p>
+            <p>all your secrets are redacted. we won't keep them either way, but if you need to be sure: [encrypt?]</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
