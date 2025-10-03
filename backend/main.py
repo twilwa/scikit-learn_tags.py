@@ -99,7 +99,12 @@ async def create_session_from_folder(
     encryption_enabled: bool = Form(False)
 ):
     try:
+        print(f"[FOLDER UPLOAD] Received {len(files)} files")
+        for f in files:
+            print(f"  - {f.filename}")
+
         supabase = get_supabase()
+        print("[FOLDER UPLOAD] Supabase client initialized")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             folder_path = temp_dir
@@ -165,6 +170,8 @@ async def create_session_from_folder(
 
             asyncio.create_task(process_log_analysis(session_data["id"], session_url, redacted_log))
 
+            print(f"[FOLDER UPLOAD] Success! Session URL: {session_url}")
+
             return {
                 "session_url": session_url,
                 "status": "analyzing",
@@ -176,7 +183,10 @@ async def create_session_from_folder(
             }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        print(f"[FOLDER UPLOAD] Error: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Folder upload failed: {str(e)}")
 
 @app.get("/api/sessions/{session_url}")
 async def get_session(session_url: str):
