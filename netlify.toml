@@ -4,6 +4,11 @@
   command = "echo 'Static site with serverless functions'"
 
 [[redirects]]
+  from = "/api/sessions/folder"
+  to = "/.netlify/functions/create-session-folder"
+  status = 200
+
+[[redirects]]
   from = "/api/sessions"
   to = "/.netlify/functions/create-session"
   status = 200

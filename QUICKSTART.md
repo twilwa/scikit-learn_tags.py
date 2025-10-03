@@ -1,448 +1,239 @@
 # Quick Start Guide
 
-## Three Ways to Use the Platform
+## ⚠️ Important: This is a Netlify Project
 
-### 1. GitHub Only (No Logs Needed!)
+This project uses **Netlify Functions** (JavaScript/Node.js), NOT Python FastAPI backend.
 
-**Perfect for**: Quick code exploration, repo analysis, learning new codebases
+## Setup (1 Minute)
 
-**Setup**:
+### 1. Install Dependencies
+
 ```bash
-# Set in .env
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
+npm install
 ```
 
-**Usage**:
-1. Click "GitHub Only" on homepage
-2. Connect your GitHub account
-3. Select a repository
-4. Get instant analysis
-5. Explore files interactively
+### 2. Run Locally
 
-**What You Get**:
-- Repository structure
-- Language breakdown
-- File organization
-- Build detection
-- No need to upload anything!
-
----
-
-### 2. .codex / .claude Folder Upload
-
-**Perfect for**: Deep analysis with configuration context, understanding your setup
-
-**What to Upload**:
-```
-.codex/
-├── sessions/
-│   ├── session1.jsonl
-│   ├── session2.jsonl
-│   └── session3.jsonl
-├── config.json        # Your interaction settings
-├── mcp.json           # MCP server configuration
-└── subagents.json     # Subagent setup
+```bash
+npm run dev
 ```
 
-**Usage**:
-1. Click ".codex / .claude Folder"
-2. Drag and drop your entire folder
-3. Or select multiple files
-4. Get comprehensive analysis
+Opens at: **http://localhost:8888**
 
-**What You Get**:
-- All session logs analyzed
-- Configuration insights (MCP, subagents, interaction styles)
-- Folder structure visualization
-- Config recommendations
-- Pattern detection across sessions
+## What Was Wrong
 
-**Example Analysis**:
+**The Issue**: "405 Method Not Allowed" on folder upload
+
+**Root Cause**: The folder upload endpoint didn't exist!
+- Project uses Netlify Functions (JavaScript)
+- You were getting 405 because `/api/sessions/folder` wasn't implemented
+- Python backend exists but is only for GitHub OAuth
+- Database is fine (just empty until you upload)
+
+**The Fix**:
+1. ✅ Created `netlify/functions/create-session-folder.js`
+2. ✅ Added redirect in `netlify.toml`
+3. ✅ Installed `parse-multipart-data` for file parsing
+4. ✅ Function handles multipart uploads, parses configs, stores in DB
+
+## Test It Now
+
+### Option 1: Via UI
+
+```bash
+npm run dev
+# Opens http://localhost:8888
+```
+
+1. Click orange ".codex Folder" button
+2. Select any `.jsonl`, `.json`, or `.log` files
+3. Click "analyze folder"
+4. Should work now!
+
+### Option 2: Via curl
+
+```bash
+# Create test file
+echo '{"type":"test","timestamp":"2025-01-01"}' > /tmp/test.jsonl
+
+# Upload it
+curl http://localhost:8888/api/sessions/folder \
+  -F "files=@/tmp/test.jsonl" \
+  -F "encryption_enabled=false"
+
+# Should return JSON with session_url
+```
+
+### Option 3: Via browser console
+
+```javascript
+const formData = new FormData();
+const blob = new Blob([JSON.stringify({type: "test"})], {type: 'application/json'});
+const file = new File([blob], "test.jsonl");
+formData.append('files', file);
+formData.append('encryption_enabled', 'false');
+
+fetch('http://localhost:8888/api/sessions/folder', {
+    method: 'POST',
+    body: formData
+}).then(r => r.json()).then(console.log);
+```
+
+## How The Project Works
+
+### Architecture
+
+**Frontend** (`netlify-frontend/`):
+- Pure HTML/JS/CSS
+- Terminal-style UI
+- Three mode buttons
+
+**Backend** (TWO parts!):
+
+1. **Netlify Functions** (`netlify/functions/*.js`):
+   - `create-session.js` - Log paste/upload
+   - `create-session-folder.js` - Folder upload ← NEW!
+   - `get-session.js`, `get-analysis.js`, `get-insights.js`
+   - Run via Netlify Dev
+
+2. **Python FastAPI** (`backend/*.py`):
+   - ONLY for GitHub OAuth
+   - Handles repo analysis
+   - Run separately: `uvicorn backend.main:app`
+
+**Database**:
+- Supabase (already connected via Bolt)
+- Tables: sessions, analysis_results, insights, etc.
+- Env vars in `.env`
+
+### The Three Modes
+
+**1. GitHub Only** (green):
+- Uses Python backend
+- Requires: GitHub OAuth setup in Supabase
+- No logs needed!
+
+**2. Folder Upload** (orange):
+- Uses Netlify Function ← YOU ARE HERE
+- Works now!
+- Parses .codex folders with configs
+
+**3. Log Files** (blue):
+- Uses Netlify Function
+- Already working
+- Quick paste/upload
+
+## Folder Upload Details
+
+**What it accepts**:
+- `.jsonl` - JSONL logs (line-delimited JSON)
+- `.json` - JSON logs or config files
+- `.log`, `.txt` - Plain text logs
+
+**Special files**:
+- `config.json` - Interaction style settings
+- `mcp.json` - MCP server configuration
+- `subagents.json` - Subagent definitions
+
+**What it returns**:
 ```json
 {
-  "folder_structure": {
-    "name": ".codex",
-    "children": [
-      {"name": "sessions", "type": "directory"},
-      {"name": "config.json", "type": "file"},
-      {"name": "mcp.json", "type": "file"}
-    ]
-  },
+  "session_url": "folder-1234567890-abc123",
+  "status": "analyzing",
+  "total_logs": 3,
+  "total_entries": 150,
+  "configs_found": ["config.json", "mcp.json"],
   "config_insights": {
     "mcp": {
-      "total_servers": 5,
-      "servers": ["filesystem", "github", "brave-search", ...],
-      "recommendations": ["..."]
-    },
-    "interaction_style": {
-      "verbosity": "concise",
-      "code_format": "markdown"
+      "servers_configured": 2,
+      "servers": ["filesystem", "postgres"]
     }
   }
 }
 ```
-
----
-
-### 3. Log Files Only
-
-**Perfect for**: Quick analysis without configuration, single session review
-
-**What to Upload**:
-- `.jsonl` files (JSONL format logs)
-- `.json` files (JSON logs)
-- `.txt` or `.log` files (plain text)
-
-**Usage**:
-1. Click "Log Files Only"
-2. Paste content or upload file
-3. Get analysis
-
-**What You Get**:
-- Session analysis
-- Pattern detection
-- Insights and recommendations
-- No config context
-
----
-
-## Feature Comparison
-
-| Feature | GitHub Only | Folder Upload | Log Files Only |
-|---------|-------------|---------------|----------------|
-| **Setup Required** | GitHub OAuth | None | None |
-| **Upload Needed** | ❌ No | ✅ Folder | ✅ Files |
-| **Config Analysis** | ❌ | ✅ Yes | ❌ |
-| **Repo Structure** | ✅ Yes | ❌ | ❌ |
-| **Session Logs** | ❌ | ✅ Yes | ✅ Yes |
-| **MCP Insights** | ❌ | ✅ Yes | ❌ |
-| **Subagent Analysis** | ❌ | ✅ Yes | ❌ |
-| **File Exploration** | ✅ Interactive | 📊 Static | ❌ |
-| **Build Detection** | ✅ Yes | ✅ Yes | ✅ Yes |
-| **Speed** | ⚡ Instant | 🔄 Upload | 🔄 Upload |
-
----
-
-## Recommended Workflow
-
-### For Understanding New Repos
-→ Use **GitHub Only**
-
-### For Debugging Your Setup
-→ Use **Folder Upload** (.codex with configs)
-
-### For Quick Session Review
-→ Use **Log Files Only**
-
-### For Collaborative Work
-→ Start any mode, then switch to **Voice Session**
-
----
-
-## API Endpoints
-
-### GitHub Mode
-```bash
-# Connect
-GET /api/github/auth/login
-
-# List repos
-GET /api/github/repositories?user_profile_id=<id>&sync=true
-
-# Analyze
-POST /api/github/analyze
-{
-  "user_profile_id": "uuid",
-  "repo_full_name": "owner/repo",
-  "session_type": "exploration"
-}
-```
-
-### Folder Upload Mode
-```bash
-POST /api/sessions/folder
-Content-Type: multipart/form-data
-
-files: [file1, file2, file3, ...]
-encryption_enabled: false
-```
-
-### Log Files Mode
-```bash
-POST /api/sessions
-Content-Type: application/json
-
-{
-  "log_content": "...",
-  "encryption_enabled": false
-}
-```
-
----
-
-## Configuration File Formats
-
-### config.json
-```json
-{
-  "interaction_style": {
-    "verbosity": "concise",
-    "code_format": "markdown",
-    "explanation_level": "detailed"
-  },
-  "model": "claude-3-5-sonnet-20241022",
-  "temperature": 0.7
-}
-```
-
-### mcp.json
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"],
-      "env": {}
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "..."
-      }
-    }
-  }
-}
-```
-
-### subagents.json
-```json
-{
-  "subagents": [
-    {
-      "name": "code-reviewer",
-      "model": "claude-3-5-sonnet",
-      "role": "review",
-      "capabilities": ["code_quality", "best_practices"]
-    },
-    {
-      "name": "debugger",
-      "model": "claude-3-opus",
-      "role": "debug",
-      "capabilities": ["error_analysis", "root_cause"]
-    }
-  ]
-}
-```
-
----
-
-## JSONL Log Format
-
-Each line is a JSON object:
-
-```jsonl
-{"timestamp": "2025-10-03T10:00:00Z", "event": "tool_call", "tool": "write_file", "args": {...}}
-{"timestamp": "2025-10-03T10:00:01Z", "event": "tool_result", "result": "success"}
-{"timestamp": "2025-10-03T10:00:02Z", "event": "message", "content": "File written successfully"}
-```
-
-Parser handles:
-- Multi-line entries
-- Nested JSON
-- Mixed formats
-- Large files (streaming)
-
----
-
-## Folder Structure Detection
-
-Automatically detects:
-
-**.codex folders**:
-```
-.codex/
-├── sessions/        # Session logs
-├── config.json      # User config
-├── mcp.json         # MCP servers
-└── subagents.json   # Subagents
-```
-
-**.claude folders**:
-```
-.claude/
-├── logs/            # Log files
-├── settings.json    # Settings
-└── plugins/         # Plugin configs
-```
-
-**Generic folders**:
-- Any structure
-- Finds logs by extension
-- Finds configs by name
-
----
-
-## Common Use Cases
-
-### 1. "Claude keeps doing X wrong"
-
-**Use**: Folder Upload
-- Upload your .codex folder
-- Check config insights
-- See if MCP/subagents misconfigured
-- Review interaction style settings
-
-### 2. "Need to understand this codebase fast"
-
-**Use**: GitHub Only
-- Connect GitHub
-- Analyze repo structure
-- Explore key files
-- No downloads needed
-
-### 3. "Session went off the rails"
-
-**Use**: Log Files Only
-- Upload the session .jsonl
-- Get analysis
-- See where it diverged
-- Get recommendations
-
-### 4. "Want to improve my setup"
-
-**Use**: Folder Upload
-- Upload full .codex with configs
-- Get config analysis
-- See MCP server recommendations
-- Optimize interaction style
-
----
 
 ## Troubleshooting
 
-### "Method Not Allowed"
+### Still getting 405?
 
-**Cause**: Using GET instead of POST for uploads
+**Check**:
+```bash
+# Is Netlify Dev running?
+npm run dev
 
-**Fix**: Use correct endpoints:
-- Logs: `POST /api/sessions`
-- Folder: `POST /api/sessions/folder`
-- GitHub: `POST /api/github/analyze`
+# Can you see the function?
+curl http://localhost:8888/.netlify/functions/create-session-folder
 
-### "Failed to parse folder"
-
-**Cause**: Missing log files or wrong structure
-
-**Fix**: Ensure folder contains:
-- At least one .jsonl, .json, .txt, or .log file
-- OR config files (config.json, mcp.json, etc.)
-
-### "Config not detected"
-
-**Cause**: Config files not at root level
-
-**Fix**: Place config files at folder root:
-```
-.codex/
-├── config.json      ← Here
-├── mcp.json         ← Here
-└── sessions/
-    └── logs...
+# Should return 405 (need POST) but not 404
 ```
 
----
+### "Failed to fetch"
 
-## Best Practices
+**Check browser console** for actual error:
+- CORS? (Should be configured)
+- Wrong URL? (Should be `/api/sessions/folder`)
+- Netlify Dev running?
 
-### For GitHub Mode
-1. Sync repos first with `?sync=true`
-2. Start with "exploration" session type
-3. Explore interesting files interactively
-4. Export insights for later
+### Function logs not showing?
 
-### For Folder Mode
-1. Upload complete .codex/.claude folder
-2. Include all config files
-3. Review config insights first
-4. Then analyze session logs
+Netlify Dev shows logs in terminal where you ran `npm run dev`
 
-### For Log Files Mode
-1. Use for quick single-session review
-2. Combine multiple sessions manually if needed
-3. Add encryption for sensitive logs
-4. Export analysis for documentation
+Look for:
+```
+[FOLDER UPLOAD] Processing request
+[FOLDER UPLOAD] Received N parts
+[FOLDER UPLOAD] Files: N, Encryption: false
+```
 
----
+### Database empty after upload?
 
-## What Gets Analyzed
+**Check**:
+1. Did upload succeed? (Check terminal logs)
+2. Supabase dashboard → Table Editor → sessions
+3. Look for rows with `folder_type: ".codex"` or `"logs"`
 
-### From Logs
-- Tool calls and results
-- Error patterns
-- Token usage
-- Session flow
-- Build success/failure
-- Code changes
+## GitHub Mode Setup
 
-### From Configs
-- MCP server setup
-- Subagent configuration
-- Interaction styles
-- Model settings
-- Custom commands
+If you want to use GitHub mode:
 
-### From GitHub
-- Repository structure
-- Language breakdown
-- File organization
-- Dependencies
-- Build configs
+1. **Configure Supabase**:
+   - Dashboard → Authentication → Providers → GitHub
+   - Add scopes: `user repo read:user`
+   - Save
 
----
+2. **Run Python backend** (separate terminal):
+   ```bash
+   uvicorn backend.main:app --reload --port 8000
+   ```
 
-## Privacy & Security
+3. **Use it**:
+   - Click "GitHub Only"
+   - "connect github"
+   - Authorize
+   - View repos
 
-### Folder Upload
-- Files processed in memory
-- Deleted after analysis
-- Configs stored encrypted
-- Secrets auto-redacted
+See `SUPABASE_GITHUB_CONFIG.md` for details.
 
-### GitHub Mode
-- OAuth tokens encrypted
-- Only fetches public repos (unless granted)
-- Can disconnect anytime
-- No code stored permanently
+## Files Changed
 
-### Log Files
-- Secrets auto-redacted
-- Optional TEE encryption
-- 24-hour expiration
-- Export for local storage
+**New**:
+- `netlify/functions/create-session-folder.js` - Folder upload handler
 
----
+**Modified**:
+- `netlify.toml` - Added redirect for `/api/sessions/folder`
+- `package.json` - Added `parse-multipart-data` dependency
 
-## Getting Started (30 seconds)
+**Already Working**:
+- Frontend UI
+- Database tables
+- Other Netlify functions
+- GitHub OAuth backend
 
-**Quickest**: GitHub Only
-1. Visit homepage
-2. Click "GitHub Only"
-3. Authorize
-4. Done!
+## Next Steps
 
-**Most Powerful**: Folder Upload
-1. Locate your .codex folder
-2. Drag to upload area
-3. Wait for analysis
-4. Review insights
+1. `npm run dev`
+2. Test folder upload via UI
+3. Check it inserts into database
+4. Optionally: Set up GitHub OAuth
 
-**Simplest**: Log Files
-1. Paste log content
-2. Click analyze
-3. Done!
-
----
-
-**Choose your path and start analyzing!**
+The folder upload **should work now** - try it!
