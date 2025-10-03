@@ -18,11 +18,13 @@ from backend.services.insight_service import InsightGenerator
 from backend.services.build_detection_service import BuildDetectionService
 from backend.routers import voice_router
 from backend.routers import gamification_router
+from backend.routers import github_router
 
 app = FastAPI(title="Claude Code Log Analyzer")
 
 app.include_router(voice_router.router)
 app.include_router(gamification_router.router)
+app.include_router(github_router.router)
 
 app.add_middleware(
     CORSMiddleware,
