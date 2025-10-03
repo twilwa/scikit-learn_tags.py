@@ -316,13 +316,21 @@ async function analyzeFolder(files) {
         showAnalysisPane();
         updateProgress(10, 'uploading folder...');
 
-        const response = await fetch(`${API_URL}/api/sessions/folder`, {
+        const url = `${API_URL}/api/sessions/folder`;
+        console.log('[DEBUG] Posting folder to:', url);
+        console.log('[DEBUG] Files:', Array.from(files).map(f => f.name));
+
+        const response = await fetch(url, {
             method: 'POST',
             body: formData
         });
 
+        console.log('[DEBUG] Response status:', response.status);
+
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            const errorText = await response.text();
+            console.error('[DEBUG] Error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
@@ -372,14 +380,14 @@ elements.dropZone.addEventListener('drop', (e) => {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
         const file = files[0];
-        if (file.name.match(/\.(codex|claude|log)$/)) {
+        if (file.name.match(/\.(codex|claude|log|jsonl|json|txt)$/i)) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 elements.logInput.value = e.target.result;
             };
             reader.readAsText(file);
         } else {
-            addLogLine('error', 'invalid file type. use .codex, .claude, or .log');
+            addLogLine('error', 'invalid file type. use .jsonl, .json, .log, .txt, .codex, or .claude');
         }
     }
 });
@@ -406,19 +414,18 @@ async function startAnalysis() {
         return;
     }
 
-    if (!API_URL) {
-        showConfigModal();
-        return;
-    }
-
     elements.paneUpload.classList.add('hidden');
     elements.paneAnalysis.classList.remove('hidden');
     elements.tmuxPanes.classList.remove('split-horizontal', 'split-vertical', 'split-quad');
 
+    addLogLine('info', 'initializing...');
     addLogLine('info', 'connecting to backend...');
 
     try {
-        const response = await fetch(API_URL + '/api/sessions', {
+        const url = `${API_URL}/api/sessions`;
+        console.log('[DEBUG] Posting to:', url);
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -429,8 +436,12 @@ async function startAnalysis() {
             })
         });
 
+        console.log('[DEBUG] Response status:', response.status);
+
         if (!response.ok) {
-            throw new Error('failed to create session: ' + response.statusText);
+            const errorText = await response.text();
+            console.error('[DEBUG] Error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
