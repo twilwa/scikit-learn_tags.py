@@ -3,6 +3,7 @@ let API_URL = localStorage.getItem(CONFIG_KEY) || window.location.origin;
 let ws = null;
 let sessionUrl = null;
 let pollInterval = null;
+let currentMode = null;
 
 const elements = {
     dropZone: document.getElementById('drop-zone'),
@@ -25,7 +26,16 @@ const elements = {
     apiUrlInput: document.getElementById('api-url-input'),
     saveConfigBtn: document.getElementById('save-config-btn'),
     cancelConfigBtn: document.getElementById('cancel-config-btn'),
-    tmuxPanes: document.querySelector('.tmux-panes')
+    tmuxPanes: document.querySelector('.tmux-panes'),
+    githubModeBtn: document.getElementById('github-mode-btn'),
+    folderModeBtn: document.getElementById('folder-mode-btn'),
+    logModeBtn: document.getElementById('log-mode-btn'),
+    githubModeSection: document.getElementById('github-mode-section'),
+    folderModeSection: document.getElementById('folder-mode-section'),
+    logModeSection: document.getElementById('log-mode-section'),
+    githubConnectBtn: document.getElementById('github-connect-btn'),
+    folderInput: document.getElementById('folder-input'),
+    folderAnalyzeBtn: document.getElementById('folder-analyze-btn')
 };
 
 function updateTime() {
@@ -60,6 +70,100 @@ function initConfig() {
         localStorage.setItem(CONFIG_KEY, API_URL);
     }
     elements.apiEndpoint.textContent = API_URL === window.location.origin ? 'integrated' : API_URL;
+}
+
+function setMode(mode) {
+    currentMode = mode;
+
+    elements.githubModeSection.style.display = 'none';
+    elements.folderModeSection.style.display = 'none';
+    elements.logModeSection.style.display = 'none';
+
+    const allBtns = [elements.githubModeBtn, elements.folderModeBtn, elements.logModeBtn];
+    allBtns.forEach(btn => {
+        btn.style.background = 'rgba(255, 255, 255, 0.05)';
+        btn.style.borderColor = '#666';
+    });
+
+    if (mode === 'github') {
+        elements.githubModeSection.style.display = 'block';
+        elements.githubModeBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+        elements.githubModeBtn.style.borderColor = '#4CAF50';
+    } else if (mode === 'folder') {
+        elements.folderModeSection.style.display = 'block';
+        elements.folderModeBtn.style.background = 'rgba(255, 152, 0, 0.2)';
+        elements.folderModeBtn.style.borderColor = '#FF9800';
+    } else if (mode === 'log') {
+        elements.logModeSection.style.display = 'block';
+        elements.logModeBtn.style.background = 'rgba(33, 150, 243, 0.2)';
+        elements.logModeBtn.style.borderColor = '#2196F3';
+    }
+}
+
+elements.githubModeBtn.addEventListener('click', () => setMode('github'));
+elements.folderModeBtn.addEventListener('click', () => setMode('folder'));
+elements.logModeBtn.addEventListener('click', () => setMode('log'));
+
+elements.githubConnectBtn.addEventListener('click', () => {
+    window.location.href = `${API_URL}/api/github/auth/login`;
+});
+
+elements.folderAnalyzeBtn.addEventListener('click', async () => {
+    const files = elements.folderInput.files;
+    if (!files || files.length === 0) {
+        alert('please select a folder');
+        return;
+    }
+
+    await analyzeFolder(files);
+});
+
+async function analyzeFolder(files) {
+    const formData = new FormData();
+
+    for (let file of files) {
+        formData.append('files', file);
+    }
+    formData.append('encryption_enabled', elements.encryptCheck.checked);
+
+    try {
+        showAnalysisPane();
+        updateProgress(10, 'uploading folder...');
+
+        const response = await fetch(`${API_URL}/api/sessions/folder`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        sessionUrl = data.session_url;
+
+        updateProgress(30, 'folder uploaded, analyzing...');
+        logMessage(`> folder structure detected: ${data.total_logs} logs, ${data.total_entries} entries`);
+
+        if (data.configs_found && data.configs_found.length > 0) {
+            logMessage(`> configs found: ${data.configs_found.join(', ')}`);
+        }
+
+        if (data.config_insights) {
+            if (data.config_insights.mcp) {
+                logMessage(`> mcp: ${data.config_insights.mcp.total_servers} servers configured`);
+            }
+            if (data.config_insights.subagents) {
+                logMessage(`> subagents: ${data.config_insights.subagents.total_subagents} configured`);
+            }
+        }
+
+        startPolling();
+
+    } catch (error) {
+        logMessage(`> error: ${error.message}`, 'error');
+        updateProgress(0, 'failed');
+    }
 }
 
 elements.saveConfigBtn.addEventListener('click', saveConfig);
@@ -424,6 +528,31 @@ function startPolling(sessionUrl) {
     }, 2000);
 }
 
+function logMessage(message, type = 'info') {
+    if (elements.logOutput) {
+        const line = document.createElement('div');
+        line.textContent = message;
+        line.style.color = type === 'error' ? '#ff5555' : '#00ff00';
+        elements.logOutput.appendChild(line);
+        elements.logOutput.scrollTop = elements.logOutput.scrollHeight;
+    }
+}
+
+function showAnalysisPane() {
+    elements.paneUpload.style.display = 'none';
+    elements.paneAnalysis.classList.remove('hidden');
+}
+
+function updateProgress(percent, message) {
+    if (elements.progressFill) {
+        elements.progressFill.style.width = percent + '%';
+    }
+    if (elements.progressText) {
+        elements.progressText.textContent = '> ' + message;
+    }
+}
+
 updateTime();
 setInterval(updateTime, 1000);
 initConfig();
+setMode('github');
