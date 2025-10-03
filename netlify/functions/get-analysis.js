@@ -11,6 +11,19 @@ exports.handler = async (event) => {
     };
   }
 
+  // Validate env vars
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase credentials:', { supabaseUrl: !!supabaseUrl, supabaseKey: !!supabaseKey });
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({ error: 'Supabase credentials not configured' })
+    };
+  }
+
   try {
     const pathParts = event.path.split('/');
     const sessionUrl = pathParts[pathParts.length - 2];

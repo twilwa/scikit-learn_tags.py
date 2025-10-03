@@ -446,3 +446,37 @@ body {
     background: var(--tmux-bg);
     border-radius: 4px;
 }
+
+.footer-shortcuts {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--tmux-status);
+    border-top: 1px solid var(--tmux-border);
+    padding: 0.5rem 1rem;
+    display: flex;
+    gap: 2rem;
+    font-size: 11px;
+    color: var(--tmux-dim);
+    z-index: 100;
+}
+
+.shortcut-hint {
+    color: var(--tmux-active);
+    font-weight: bold;
+}
+
+.shortcut-item {
+    color: var(--tmux-fg);
+}
+
+.shortcut-item::before {
+    content: '[';
+    color: var(--tmux-dim);
+}
+
+.shortcut-item::after {
+    content: ']';
+    color: var(--tmux-dim);
+}

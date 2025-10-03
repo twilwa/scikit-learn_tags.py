@@ -670,18 +670,31 @@ function startPolling(sessionUrl) {
     let lastInsightCount = 0;
     let lastAnalysisCount = 0;
     let checksRemaining = 60;
+    let lastStatusTime = Date.now();
+
+    // Initial status
+    addLogLine('info', 'checking for analysis results...');
 
     pollInterval = setInterval(async () => {
         checksRemaining--;
 
+        // Show progress every 10 checks (20 seconds)
+        if (checksRemaining % 10 === 0 && checksRemaining < 60) {
+            const elapsed = Math.floor((Date.now() - lastStatusTime) / 1000);
+            addLogLine('info', `still checking... (${elapsed}s elapsed)`);
+            updateProgress(30 + ((60 - checksRemaining) / 60) * 30, 'awaiting analysis...');
+        }
+
         if (checksRemaining <= 0) {
             clearInterval(pollInterval);
-            addLogLine('info', 'polling stopped after timeout');
+            addLogLine('warning', 'polling timeout - analysis may not be running');
+            addLogLine('info', 'note: backend analysis service may not be deployed');
+            addLogLine('info', 'session saved in database - check back later');
             return;
         }
 
         try {
-            const sessionResp = await fetch(API_URL + '/api/sessions/' + sessionUrl);
+            const sessionResp = await fetch((API_URL ? API_URL : '') + '/api/sessions/' + sessionUrl);
             const session = await sessionResp.json();
 
             if (session.status === 'completed') {
@@ -693,7 +706,7 @@ function startPolling(sessionUrl) {
                 clearInterval(pollInterval);
             }
 
-            const analysisResp = await fetch(API_URL + '/api/sessions/' + sessionUrl + '/analysis');
+            const analysisResp = await fetch((API_URL ? API_URL : '') + '/api/sessions/' + sessionUrl + '/analysis');
             const analysis = await analysisResp.json();
 
             if (analysis.length > lastAnalysisCount) {
@@ -706,7 +719,7 @@ function startPolling(sessionUrl) {
                 updateProgress(20 + (lastAnalysisCount * 15), 'processing...');
             }
 
-            const insightsResp = await fetch(API_URL + '/api/sessions/' + sessionUrl + '/insights');
+            const insightsResp = await fetch((API_URL ? API_URL : '') + '/api/sessions/' + sessionUrl + '/insights');
             const insights = await insightsResp.json();
 
             if (insights.length > lastInsightCount) {
