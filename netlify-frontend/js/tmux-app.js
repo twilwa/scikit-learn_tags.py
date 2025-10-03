@@ -1,5 +1,6 @@
 const CONFIG_KEY = 'claude_analyzer_api';
-let API_URL = localStorage.getItem(CONFIG_KEY) || window.location.origin;
+// Use empty string for relative URLs (works in all environments)
+let API_URL = localStorage.getItem(CONFIG_KEY) || '';
 let ws = null;
 let sessionUrl = null;
 let pollInterval = null;
@@ -66,10 +67,10 @@ function saveConfig() {
 
 function initConfig() {
     if (!API_URL) {
-        API_URL = window.location.origin;
-        localStorage.setItem(CONFIG_KEY, API_URL);
+        API_URL = '';
+        localStorage.removeItem(CONFIG_KEY);
     }
-    elements.apiEndpoint.textContent = API_URL === window.location.origin ? 'integrated' : API_URL;
+    elements.apiEndpoint.textContent = API_URL === '' ? 'integrated' : API_URL;
 }
 
 function setMode(mode) {
