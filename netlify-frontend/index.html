@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>claude-log-analyzer - tmux session</title>
+    <link rel="stylesheet" href="css/tmux.css">
+</head>
+<body>
+    <div class="tmux-container">
+        <div class="tmux-status-top">
+            <div class="status-left">
+                <span class="status-session">[0] claude-log-analyzer</span>
+                <span class="status-window">0:analyzer*</span>
+            </div>
+            <div class="status-center">hey. u stuck? lemme take a look.</div>
+            <div class="status-right">
+                <span id="status-time"></span>
+            </div>
+        </div>
+
+        <div class="tmux-panes">
+            <div class="pane pane-main" id="pane-upload">
+                <div class="pane-border-top">╭─ pane 1: upload ─────────────────────────────────────────────</div>
+                <div class="pane-content">
+                    <pre class="ascii-art">
+ ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗
+██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝
+██║     ██║     ███████║██║   ██║██║  ██║█████╗
+██║     ██║     ██╔══██║██║   ██║██║  ██║██╔══╝
+╚██████╗███████╗██║  ██║╚██████╔╝██████╔╝███████╗
+ ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝
+                    </pre>
+
+                    <div class="upload-zone" id="drop-zone">
+                        <p>> drop .codex/.claude log here or paste below</p>
+                        <textarea id="log-input" placeholder="paste log content..."></textarea>
+                    </div>
+
+                    <div class="controls">
+                        <label class="control-item">
+                            <input type="checkbox" id="encrypt-check">
+                            <span>run in TEE?</span>
+                        </label>
+                        <button id="analyze-btn" class="tmux-btn">analyze [enter]</button>
+                    </div>
+
+                    <div id="upload-help" class="help-text">
+                        <p>keyboard shortcuts:</p>
+                        <p>  ctrl+b d  - detach session</p>
+                        <p>  ctrl+b c  - new window</p>
+                        <p>  ctrl+b %  - split vertical</p>
+                        <p>  enter     - start analysis</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pane pane-analysis hidden" id="pane-analysis">
+                <div class="pane-border-top">╭─ pane 1: analysis ───────────────────────────────────────────</div>
+                <div class="pane-content">
+                    <div id="progress-section">
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill"></div>
+                            </div>
+                            <div id="progress-text">> initializing...</div>
+                        </div>
+                    </div>
+
+                    <div id="log-output" class="log-output"></div>
+                </div>
+            </div>
+
+            <div class="pane pane-split pane-insights hidden" id="pane-insights">
+                <div class="pane-border-top">╭─ pane 2: insights ───────────────────────────────────────────</div>
+                <div class="pane-content">
+                    <div id="insights-list"></div>
+                </div>
+            </div>
+
+            <div class="pane pane-split pane-viz hidden" id="pane-viz">
+                <div class="pane-border-top">╭─ pane 3: visualizations ─────────────────────────────────────</div>
+                <div class="pane-content">
+                    <div id="viz-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tmux-status-bottom">
+            <div class="status-left">
+                <span id="connection-status" class="status-disconnected">● disconnected</span>
+            </div>
+            <div class="status-right">
+                <span>api: <span id="api-endpoint">not configured</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="config-modal" class="modal">
+        <div class="modal-content">
+            <h3>configure backend</h3>
+            <p>enter your backend API URL:</p>
+            <input type="text" id="api-url-input" placeholder="https://your-api.com" />
+            <div class="modal-buttons">
+                <button id="save-config-btn" class="tmux-btn">save</button>
+                <button id="cancel-config-btn" class="tmux-btn">cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+    <script src="js/tmux-app.js"></script>
+</body>
+</html>
