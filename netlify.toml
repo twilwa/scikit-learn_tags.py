@@ -1,6 +1,27 @@
 [build]
   publish = "netlify-frontend"
-  command = "echo 'Static site, no build needed'"
+  functions = "netlify/functions"
+  command = "echo 'Static site with serverless functions'"
+
+[[redirects]]
+  from = "/api/sessions"
+  to = "/.netlify/functions/create-session"
+  status = 200
+
+[[redirects]]
+  from = "/api/sessions/:sessionUrl"
+  to = "/.netlify/functions/get-session/:sessionUrl"
+  status = 200
+
+[[redirects]]
+  from = "/api/sessions/:sessionUrl/insights"
+  to = "/.netlify/functions/get-insights/:sessionUrl/insights"
+  status = 200
+
+[[redirects]]
+  from = "/api/sessions/:sessionUrl/analysis"
+  to = "/.netlify/functions/get-analysis/:sessionUrl/analysis"
+  status = 200
 
 [[redirects]]
   from = "/*"
@@ -14,3 +35,4 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "no-referrer"
     Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Access-Control-Allow-Origin = "*"

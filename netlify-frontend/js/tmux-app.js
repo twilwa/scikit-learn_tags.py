@@ -1,7 +1,8 @@
 const CONFIG_KEY = 'claude_analyzer_api';
-let API_URL = localStorage.getItem(CONFIG_KEY) || '';
+let API_URL = localStorage.getItem(CONFIG_KEY) || window.location.origin;
 let ws = null;
 let sessionUrl = null;
+let pollInterval = null;
 
 const elements = {
     dropZone: document.getElementById('drop-zone'),
@@ -55,10 +56,10 @@ function saveConfig() {
 
 function initConfig() {
     if (!API_URL) {
-        showConfigModal();
-    } else {
-        elements.apiEndpoint.textContent = API_URL;
+        API_URL = window.location.origin;
+        localStorage.setItem(CONFIG_KEY, API_URL);
     }
+    elements.apiEndpoint.textContent = API_URL === window.location.origin ? 'integrated' : API_URL;
 }
 
 elements.saveConfigBtn.addEventListener('click', saveConfig);
@@ -156,39 +157,16 @@ async function startAnalysis() {
 }
 
 function connectWebSocket(sessionUrl) {
-    const wsProtocol = API_URL.startsWith('https') ? 'wss:' : 'ws:';
-    const wsUrl = API_URL.replace(/^https?:/, wsProtocol) + '/ws/' + sessionUrl;
+    addLogLine('info', 'using polling mode (serverless functions)...');
+    elements.connectionStatus.textContent = '● polling';
+    elements.connectionStatus.className = 'status-connected';
 
-    addLogLine('info', 'establishing websocket connection...');
-
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-        addLogLine('success', 'websocket connected');
-        elements.connectionStatus.textContent = '● connected';
-        elements.connectionStatus.className = 'status-connected';
-    };
-
-    ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        handleMessage(message);
-    };
-
-    ws.onerror = (error) => {
-        addLogLine('error', 'websocket error');
-        elements.connectionStatus.textContent = '● error';
-        elements.connectionStatus.className = 'status-disconnected';
-    };
-
-    ws.onclose = () => {
-        addLogLine('info', 'websocket disconnected');
-        elements.connectionStatus.textContent = '● disconnected';
-        elements.connectionStatus.className = 'status-disconnected';
-    };
+    startPolling(sessionUrl);
 }
 
 function handleMessage(message) {
-    const { type, data } = message;
+    const type = message.type;
+    const data = message.data;
 
     switch (type) {
         case 'status':
@@ -266,16 +244,16 @@ function showVizPane() {
 
 function addInsight(insightData) {
     const card = document.createElement('div');
-    card.className = 'insight-card ' + insightData.type;
+    card.className = 'insight-card ' + insightData.insight_type;
 
-    const typeLabel = insightData.type.replace('_', ' ');
+    const typeLabel = insightData.insight_type.replace('_', ' ');
     const signalPercent = (insightData.signal_score * 100).toFixed(0);
 
     card.innerHTML = '<div class="insight-header">' +
         '<span class="insight-type">' + typeLabel + '</span>' +
         '<span class="insight-score">signal: ' + signalPercent + '%</span>' +
         '</div>' +
-        '<div class="insight-text">' + insightData.text + '</div>' +
+        '<div class="insight-text">' + insightData.insight_text + '</div>' +
         '<div class="insight-actions">' +
         '<button class="insight-btn">copy</button>' +
         '<button class="insight-btn">expand</button>' +
@@ -384,6 +362,66 @@ function renderNetworkGraph(graphData) {
     };
 
     new vis.Network(container, data, options);
+}
+
+function startPolling(sessionUrl) {
+    let lastInsightCount = 0;
+    let lastAnalysisCount = 0;
+    let checksRemaining = 60;
+
+    pollInterval = setInterval(async () => {
+        checksRemaining--;
+
+        if (checksRemaining <= 0) {
+            clearInterval(pollInterval);
+            addLogLine('info', 'polling stopped after timeout');
+            return;
+        }
+
+        try {
+            const sessionResp = await fetch(API_URL + '/api/sessions/' + sessionUrl);
+            const session = await sessionResp.json();
+
+            if (session.status === 'completed') {
+                updateProgress(100, 'analysis complete');
+                addLogLine('success', 'all analysis complete. ready.');
+                clearInterval(pollInterval);
+            } else if (session.status === 'failed') {
+                addLogLine('error', 'analysis failed: ' + (session.metadata?.error || 'unknown error'));
+                clearInterval(pollInterval);
+            }
+
+            const analysisResp = await fetch(API_URL + '/api/sessions/' + sessionUrl + '/analysis');
+            const analysis = await analysisResp.json();
+
+            if (analysis.length > lastAnalysisCount) {
+                const newAnalysis = analysis.slice(lastAnalysisCount);
+                newAnalysis.forEach(a => {
+                    addLogLine('success', a.analysis_type + ' analysis complete');
+                    showVisualization(a.analysis_type, a.result_data);
+                });
+                lastAnalysisCount = analysis.length;
+                updateProgress(20 + (lastAnalysisCount * 15), 'processing...');
+            }
+
+            const insightsResp = await fetch(API_URL + '/api/sessions/' + sessionUrl + '/insights');
+            const insights = await insightsResp.json();
+
+            if (insights.length > lastInsightCount) {
+                const newInsights = insights.slice(lastInsightCount);
+                newInsights.forEach(insight => {
+                    showInsightPane();
+                    addInsight(insight);
+                    addLogLine('insight', 'new insight: ' + insight.insight_type);
+                });
+                lastInsightCount = insights.length;
+                updateProgress(Math.min(80 + (lastInsightCount * 5), 95), 'generating insights...');
+            }
+
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    }, 2000);
 }
 
 updateTime();

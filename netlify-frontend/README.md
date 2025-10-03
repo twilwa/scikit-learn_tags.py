@@ -1,43 +1,48 @@
-# Claude Log Analyzer - Static Frontend
+# Deployment Instructions
 
-tmux-style static frontend deployable to Netlify.
-
-## Deploy to Netlify
+## Quick Deploy
 
 1. Push this repo to GitHub
-2. Connect to Netlify
-3. Set build directory to `netlify-frontend`
-4. Deploy
 
-Or use Netlify CLI:
-```bash
-cd netlify-frontend
-netlify deploy --prod
-```
+2. Go to [Netlify](https://netlify.com) and click "Add new site" → "Import an existing project"
 
-## Configuration
+3. Connect your GitHub repo
 
-On first visit, you'll be prompted to enter your backend API URL.
+4. Configure build settings:
+   - Build command: `echo "No build needed"`
+   - Publish directory: `netlify-frontend`
+   - Functions directory: `netlify/functions`
 
-The backend should be running separately (e.g., on Railway, Fly.io, or your own server).
+5. Add environment variables in Netlify dashboard:
+   - `VITE_SUPABASE_URL` - your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` - your Supabase anon key
+
+6. Deploy!
+
+## What You Get
+
+- Static frontend with tmux aesthetic
+- Serverless functions for backend API
+- No WebSocket needed (polling mode)
+- Fully integrated - no config needed on frontend
+
+The frontend will automatically use the same domain for API calls.
 
 ## Local Development
 
-Just open `index.html` in a browser or use:
 ```bash
-python3 -m http.server 8080
+npm install
+netlify dev
 ```
 
-## Features
+This runs both the static site and serverless functions locally.
 
-- tmux-style pane splitting
-- Real-time WebSocket updates
-- Terminal aesthetic
-- Keyboard shortcuts
-- No build step required
-- Pure HTML/CSS/JS
+## Backend API Routes
 
-## Keyboard Shortcuts
+All routes are serverless functions:
+- `POST /api/sessions` - create session
+- `GET /api/sessions/:id` - get session status
+- `GET /api/sessions/:id/insights` - get insights
+- `GET /api/sessions/:id/analysis` - get analysis results
 
-- `Enter` - start analysis
-- `Ctrl+Enter` - submit from textarea
+No WebSocket support in serverless mode, but frontend uses polling (2s interval).

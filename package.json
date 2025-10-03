@@ -1,0 +1,16 @@
+{
+  "name": "claude-log-analyzer",
+  "version": "1.0.0",
+  "description": "Analyze Claude Code session logs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build needed'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}
