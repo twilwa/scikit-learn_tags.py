@@ -125,17 +125,76 @@ elements.githubConnectBtn.addEventListener('click', async () => {
 
 async function checkGitHubConnection() {
     const { data: { session } } = await supabaseClient.auth.getSession();
+    const githubStatus = document.getElementById('github-status');
 
-    if (session && session.provider_token) {
-        const githubStatus = document.getElementById('github-status');
-        if (githubStatus) {
+    if (!githubStatus) return;
+
+    if (session) {
+        const userName = session.user?.user_metadata?.user_name || session.user?.user_metadata?.preferred_username || 'User';
+        const hasProviderToken = !!session.provider_token;
+
+        if (hasProviderToken) {
             githubStatus.innerHTML = `
-                <p style="color: #4CAF50;">> connected as: ${session.user.user_metadata.user_name}</p>
+                <p style="color: #4CAF50;">> connected as: ${userName}</p>
+                <p style="color: #888; font-size: 0.9rem;">✓ GitHub API access granted</p>
                 <button class="tmux-btn" onclick="syncAndShowRepos()">view repositories [enter]</button>
+                <button class="tmux-btn" style="margin-left: 0.5rem; font-size: 0.8rem;" onclick="debugAuth()">debug</button>
+            `;
+        } else {
+            githubStatus.innerHTML = `
+                <p style="color: #ff9800;">> signed in as: ${userName}</p>
+                <p style="color: #ff5555; font-size: 0.9rem;">⚠ No GitHub API access</p>
+                <p style="color: #888; font-size: 0.9rem;">
+                    You're signed in, but we don't have permission to access GitHub API.<br>
+                    Please sign out and sign in again to grant API access.
+                </p>
+                <button class="tmux-btn" onclick="signOut()">sign out</button>
+                <button class="tmux-btn" style="margin-left: 0.5rem; font-size: 0.8rem;" onclick="debugAuth()">debug</button>
             `;
         }
+    } else {
+        githubStatus.innerHTML = `
+            <p style="color: #888;">> not connected</p>
+        `;
     }
 }
+
+async function debugAuth() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (!session) {
+        alert('Not authenticated');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/github/auth/debug`, {
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        const data = await response.json();
+
+        console.log('=== AUTH DEBUG ===');
+        console.log('Session:', session);
+        console.log('Backend sees:', data);
+        console.log('================');
+
+        alert(`Debug info (check console):\n\nHas provider_token: ${data.has_provider_token}\nToken length: ${data.provider_token_length}\n\nSee console for details`);
+
+    } catch (error) {
+        alert('Debug failed: ' + error.message);
+    }
+}
+
+async function signOut() {
+    await supabaseClient.auth.signOut();
+    window.location.reload();
+}
+
+window.debugAuth = debugAuth;
+window.signOut = signOut;
 
 async function syncAndShowRepos() {
     const { data: { session } } = await supabaseClient.auth.getSession();

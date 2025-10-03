@@ -8,6 +8,33 @@ from backend.database import get_supabase
 router = APIRouter(prefix="/api/github", tags=["github"])
 
 
+@router.get("/auth/debug")
+async def debug_auth(authorization: str = Header(...)):
+    """Debug endpoint to check what we receive from Supabase auth"""
+    try:
+        supabase = get_supabase()
+
+        auth_header = authorization.replace('Bearer ', '')
+        user_response = supabase.auth.get_user(auth_header)
+
+        if not user_response.user:
+            return {"error": "Invalid token"}
+
+        user = user_response.user
+
+        return {
+            "user_id": user.id,
+            "email": user.email,
+            "provider": user.app_metadata.get('provider'),
+            "providers": user.app_metadata.get('providers', []),
+            "user_metadata": user.user_metadata,
+            "has_provider_token": 'provider_token' in (user.user_metadata or {}),
+            "provider_token_length": len(user.user_metadata.get('provider_token', '')) if user.user_metadata else 0
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 class CreateAnalysisRequest(BaseModel):
     repo_full_name: str
     session_type: str = 'exploration'
