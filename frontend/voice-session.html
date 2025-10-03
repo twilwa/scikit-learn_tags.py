@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Session - Claude Code Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .session-info {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .timer {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+
+        .price {
+            color: #FFB74D;
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .transcript {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .message {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: rgba(66, 165, 245, 0.2);
+            align-self: flex-end;
+            border: 1px solid rgba(66, 165, 245, 0.3);
+        }
+
+        .message.ai {
+            background: rgba(76, 175, 80, 0.2);
+            align-self: flex-start;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .repl {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .repl-output {
+            flex: 1;
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .execution-block {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .execution-block:last-child {
+            border-bottom: none;
+        }
+
+        .code-input {
+            color: #4CAF50;
+            margin-bottom: 0.5rem;
+        }
+
+        .code-output {
+            color: #e4e4e4;
+            padding-left: 1rem;
+        }
+
+        .code-error {
+            color: #f44336;
+            padding-left: 1rem;
+        }
+
+        .repl-input-area {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        textarea {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: #e4e4e4;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: none;
+            min-height: 60px;
+        }
+
+        button {
+            background: #42A5F5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #1E88E5;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .mic-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #f44336;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .mic-button.recording {
+            background: #4CAF50;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-top: 1rem;
+        }
+
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .status.active {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .status.waiting {
+            background: rgba(255, 183, 77, 0.2);
+            color: #FFB74D;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎙️ Voice Session</h1>
+        <div class="session-info">
+            <div class="timer" id="timer">00:00 / 60:00</div>
+            <div class="price" id="price">$0.00</div>
+            <div class="status waiting" id="status">Waiting</div>
+        </div>
+    </header>
+
+    <main>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>💬 Conversation</h2>
+                <button class="mic-button" id="micButton" title="Push to talk">
+                    🎤
+                </button>
+            </div>
+            <div class="transcript" id="transcript">
+                <div class="message ai">
+                    Hey! I'm your AI assistant. I can help you analyze logs, review code, and debug together.
+                    Click the mic to start talking, or use the REPL on the right to run Python code!
+                </div>
+            </div>
+            <div class="controls">
+                <textarea id="textInput" placeholder="Type a message..."></textarea>
+                <button id="sendButton">Send</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h2>🐍 Python REPL</h2>
+                <button id="clearButton">Clear</button>
+            </div>
+            <div class="repl">
+                <div class="repl-output" id="replOutput">
+                    <div class="execution-block">
+                        <div class="code-input">>>> print("Welcome to collaborative Python REPL!")</div>
+                        <div class="code-output">Welcome to collaborative Python REPL!</div>
+                    </div>
+                </div>
+                <div class="repl-input-area">
+                    <textarea id="codeInput" placeholder="Enter Python code..."></textarea>
+                    <button id="runButton">Run</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/voice-session.js"></script>
+    <script>
+        const sessionUrl = new URLSearchParams(window.location.search).get('session');
+        const voiceSession = new VoiceSession(sessionUrl, 'voice_browser');
+
+        let isRecording = false;
+        let startTime = null;
+        let timerInterval = null;
+
+        voiceSession.onConnect = () => {
+            document.getElementById('status').textContent = 'Active';
+            document.getElementById('status').className = 'status active';
+            startTime = Date.now();
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
+        };
+
+        voiceSession.onMicrophoneReady = () => {
+            console.log('Microphone ready');
+        };
+
+        voiceSession.onRecordingStart = () => {
+            isRecording = true;
+            document.getElementById('micButton').classList.add('recording');
+        };
+
+        voiceSession.onRecordingStop = () => {
+            isRecording = false;
+            document.getElementById('micButton').classList.remove('recording');
+        };
+
+        voiceSession.onTranscription = (data) => {
+            addMessage(data.text, 'user');
+        };
+
+        voiceSession.onAIResponse = (data) => {
+            addMessage(data.text, 'ai');
+        };
+
+        voiceSession.onCodeExecution = (data) => {
+            addExecutionBlock(data.code, data.output, data.error_message);
+        };
+
+        voiceSession.onTimeUpdate = (data) => {
+            updateTimer();
+        };
+
+        voiceSession.onSessionExpired = () => {
+            alert('Session time expired!');
+            document.getElementById('status').textContent = 'Expired';
+            document.getElementById('status').className = 'status';
+        };
+
+        function updateTimer() {
+            if (!startTime) return;
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('timer').textContent =
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} / 60:00`;
+        }
+
+        function addMessage(text, type) {
+            const transcript = document.getElementById('transcript');
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            message.textContent = text;
+            transcript.appendChild(message);
+            transcript.scrollTop = transcript.scrollHeight;
+        }
+
+        function addExecutionBlock(code, output, error) {
+            const replOutput = document.getElementById('replOutput');
+            const block = document.createElement('div');
+            block.className = 'execution-block';
+
+            const codeDiv = document.createElement('div');
+            codeDiv.className = 'code-input';
+            codeDiv.textContent = `>>> ${code}`;
+            block.appendChild(codeDiv);
+
+            if (error) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'code-error';
+                errorDiv.textContent = error;
+                block.appendChild(errorDiv);
+            } else if (output) {
+                const outputDiv = document.createElement('div');
+                outputDiv.className = 'code-output';
+                outputDiv.textContent = output;
+                block.appendChild(outputDiv);
+            }
+
+            replOutput.appendChild(block);
+            replOutput.scrollTop = replOutput.scrollHeight;
+        }
+
+        document.getElementById('micButton').addEventListener('mousedown', () => {
+            voiceSession.startRecording();
+        });
+
+        document.getElementById('micButton').addEventListener('mouseup', () => {
+            voiceSession.stopRecording();
+        });
+
+        document.getElementById('sendButton').addEventListener('click', async () => {
+            const input = document.getElementById('textInput');
+            const text = input.value.trim();
+            if (text) {
+                addMessage(text, 'user');
+                await voiceSession.sendMessage(text);
+                input.value = '';
+            }
+        });
+
+        document.getElementById('runButton').addEventListener('click', async () => {
+            const input = document.getElementById('codeInput');
+            const code = input.value.trim();
+            if (code) {
+                const result = await voiceSession.executeCode(code);
+                addExecutionBlock(code, result.output, result.error_message);
+                input.value = '';
+            }
+        });
+
+        document.getElementById('clearButton').addEventListener('click', () => {
+            document.getElementById('replOutput').innerHTML = '';
+        });
+
+        document.getElementById('codeInput').addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                document.getElementById('runButton').click();
+            }
+        });
+
+        voiceSession.initialize();
+
+        window.addEventListener('beforeunload', () => {
+            if (timerInterval) clearInterval(timerInterval);
+            voiceSession.disconnect();
+        });
+    </script>
+</body>
+</html>

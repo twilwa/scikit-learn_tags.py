@@ -15,8 +15,11 @@ from backend.utils.secret_redaction import redact_secrets
 from backend.utils.log_parser import parse_log
 from backend.services.analysis_service import AnalysisService
 from backend.services.insight_service import InsightGenerator
+from backend.routers import voice_router
 
 app = FastAPI(title="Claude Code Log Analyzer")
+
+app.include_router(voice_router.router)
 
 app.add_middleware(
     CORSMiddleware,
