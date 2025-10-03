@@ -4,8 +4,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import uuid
+import os
+import tempfile
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 import json
 from pydantic import BaseModel
 
@@ -19,7 +21,7 @@ from backend.services.insight_service import InsightGenerator
 from backend.services.build_detection_service import BuildDetectionService
 from backend.routers import voice_router
 from backend.routers import gamification_router
-from backend.routers import github_router
+from backend.routers import github_router_simple as github_router
 
 app = FastAPI(title="Claude Code Log Analyzer")
 
@@ -98,8 +100,6 @@ async def create_session_from_folder(
 ):
     try:
         supabase = get_supabase()
-        import tempfile
-        import shutil
 
         with tempfile.TemporaryDirectory() as temp_dir:
             folder_path = temp_dir

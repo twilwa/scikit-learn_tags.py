@@ -104,9 +104,136 @@ elements.githubModeBtn.addEventListener('click', () => setMode('github'));
 elements.folderModeBtn.addEventListener('click', () => setMode('folder'));
 elements.logModeBtn.addEventListener('click', () => setMode('log'));
 
-elements.githubConnectBtn.addEventListener('click', () => {
-    window.location.href = `${API_URL}/api/github/auth/login`;
+const supabaseClient = supabase.createClient(
+    'https://0ec90b57d6e95fcbda19832f.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw'
+);
+
+elements.githubConnectBtn.addEventListener('click', async () => {
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+            scopes: 'repo read:user',
+            redirectTo: window.location.origin + '/netlify-frontend/'
+        }
+    });
+
+    if (error) {
+        alert('GitHub connection failed: ' + error.message);
+    }
 });
+
+async function checkGitHubConnection() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (session && session.provider_token) {
+        const githubStatus = document.getElementById('github-status');
+        if (githubStatus) {
+            githubStatus.innerHTML = `
+                <p style="color: #4CAF50;">> connected as: ${session.user.user_metadata.user_name}</p>
+                <button class="tmux-btn" onclick="syncAndShowRepos()">view repositories [enter]</button>
+            `;
+        }
+    }
+}
+
+async function syncAndShowRepos() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (!session) {
+        alert('not authenticated');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/github/repositories?sync=true`, {
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const repos = await response.json();
+        displayRepositories(repos);
+
+    } catch (error) {
+        alert('Failed to fetch repos: ' + error.message);
+    }
+}
+
+function displayRepositories(repos) {
+    const githubStatus = document.getElementById('github-status');
+    if (!githubStatus) return;
+
+    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+    html += '<p style="color: #00ff00;">> repositories:</p>';
+
+    repos.forEach((repo, index) => {
+        html += `
+            <div style="margin: 0.5rem 0; padding: 0.5rem; background: rgba(0,0,0,0.3); border-left: 2px solid #4CAF50;">
+                <div style="font-weight: bold;">${repo.repo_full_name}</div>
+                <div style="color: #888; font-size: 0.9rem;">
+                    ${repo.primary_language || 'Unknown'} | ⭐ ${repo.stars} | 🍴 ${repo.forks}
+                </div>
+                <button class="tmux-btn" style="margin-top: 0.5rem; font-size: 0.8rem;"
+                        onclick="analyzeRepo('${repo.repo_full_name}')">analyze</button>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    githubStatus.innerHTML = html;
+}
+
+async function analyzeRepo(repoFullName) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (!session) {
+        alert('not authenticated');
+        return;
+    }
+
+    try {
+        showAnalysisPane();
+        updateProgress(10, 'starting repository analysis...');
+
+        const response = await fetch(`${API_URL}/api/github/analyze`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                repo_full_name: repoFullName,
+                session_type: 'exploration'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const data = await response.json();
+        sessionUrl = data.session_url;
+
+        updateProgress(30, 'analyzing repository structure...');
+        logMessage(`> analyzing: ${repoFullName}`);
+
+        startPolling();
+
+    } catch (error) {
+        logMessage(`> error: ${error.message}`, 'error');
+        updateProgress(0, 'failed');
+    }
+}
+
+window.syncAndShowRepos = syncAndShowRepos;
+window.analyzeRepo = analyzeRepo;
+
+checkGitHubConnection();
 
 elements.folderAnalyzeBtn.addEventListener('click', async () => {
     const files = elements.folderInput.files;
