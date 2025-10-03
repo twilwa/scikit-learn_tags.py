@@ -169,7 +169,7 @@ async function debugAuth() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/api/github/auth/debug`, {
+        const response = await fetch(API_URL ? `${API_URL}/api/github/auth/debug` : '/api/github/auth/debug', {
             headers: {
                 'Authorization': `Bearer ${session.access_token}`
             }
@@ -206,7 +206,7 @@ async function syncAndShowRepos() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/api/github/repositories?sync=true`, {
+        const response = await fetch(API_URL ? `${API_URL}/api/github/repositories?sync=true` : '/api/github/repositories?sync=true', {
             headers: {
                 'Authorization': `Bearer ${session.access_token}`
             }
@@ -260,7 +260,7 @@ async function analyzeRepo(repoFullName) {
         showAnalysisPane();
         updateProgress(10, 'starting repository analysis...');
 
-        const response = await fetch(`${API_URL}/api/github/analyze`, {
+        const response = await fetch(API_URL ? `${API_URL}/api/github/analyze` : '/api/github/analyze', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${session.access_token}`,
@@ -317,7 +317,7 @@ async function analyzeFolder(files) {
         showAnalysisPane();
         updateProgress(10, 'uploading folder...');
 
-        const url = `${API_URL}/api/sessions/folder`;
+        const url = API_URL ? `${API_URL}/api/sessions/folder` : '/api/sessions/folder';
         console.log('[DEBUG] Posting folder to:', url);
         console.log('[DEBUG] Files:', Array.from(files).map(f => f.name));
 
@@ -339,6 +339,8 @@ async function analyzeFolder(files) {
 
         updateProgress(30, 'folder uploaded, analyzing...');
         logMessage(`> folder structure detected: ${data.total_logs} logs, ${data.total_entries} entries`);
+        logMessage('> → watch this pane for real-time updates');
+        logMessage('> → insights will appear automatically');
 
         if (data.configs_found && data.configs_found.length > 0) {
             logMessage(`> configs found: ${data.configs_found.join(', ')}`);
@@ -401,11 +403,7 @@ elements.logInput.addEventListener('keydown', (e) => {
 
 elements.analyzeBtn.addEventListener('click', startAnalysis);
 
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.ctrlKey && document.activeElement !== elements.logInput) {
-        startAnalysis();
-    }
-});
+// Removed global Enter keydown - was causing unwanted session starts
 
 async function startAnalysis() {
     const logContent = elements.logInput.value.trim();
@@ -423,7 +421,7 @@ async function startAnalysis() {
     addLogLine('info', 'connecting to backend...');
 
     try {
-        const url = `${API_URL}/api/sessions`;
+        const url = API_URL ? `${API_URL}/api/sessions` : '/api/sessions';
         console.log('[DEBUG] Posting to:', url);
 
         const response = await fetch(url, {
@@ -449,6 +447,8 @@ async function startAnalysis() {
         sessionUrl = data.session_url;
 
         addLogLine('success', 'session created: ' + sessionUrl);
+        addLogLine('info', '→ watch this pane for real-time updates');
+        addLogLine('info', '→ insights will appear automatically');
         connectWebSocket(sessionUrl);
 
     } catch (error) {

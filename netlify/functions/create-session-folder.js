@@ -44,13 +44,21 @@ exports.handler = async (event, context) => {
 
     console.log(`[FOLDER UPLOAD] Files: ${files.length}, Encryption: ${encryptionEnabled}`);
 
+    // Limit file processing to avoid timeout
+    const MAX_FILES = 30;
+    const filesToProcess = files.slice(0, MAX_FILES);
+
+    if (files.length > MAX_FILES) {
+      console.log(`[FOLDER UPLOAD] Warning: ${files.length} files uploaded, processing first ${MAX_FILES}`);
+    }
+
     // Process files
     let combinedLogs = '';
     let totalEntries = 0;
     const configs = {};
     const logFiles = [];
 
-    for (const file of files) {
+    for (const file of filesToProcess) {
       const filename = file.filename;
       const content = file.data.toString('utf8');
 
