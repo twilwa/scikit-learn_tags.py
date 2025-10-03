@@ -15,11 +15,14 @@ from backend.utils.secret_redaction import redact_secrets
 from backend.utils.log_parser import parse_log
 from backend.services.analysis_service import AnalysisService
 from backend.services.insight_service import InsightGenerator
+from backend.services.build_detection_service import BuildDetectionService
 from backend.routers import voice_router
+from backend.routers import gamification_router
 
 app = FastAPI(title="Claude Code Log Analyzer")
 
 app.include_router(voice_router.router)
+app.include_router(gamification_router.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,6 +37,7 @@ app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 active_connections: Dict[str, WebSocket] = {}
 analysis_service = AnalysisService()
 insight_generator = InsightGenerator()
+build_detection = BuildDetectionService()
 
 class CreateSessionRequest(BaseModel):
     log_content: str
